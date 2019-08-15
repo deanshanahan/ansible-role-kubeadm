@@ -1,0 +1,80 @@
+---
+
+- name: RedHat | Install or update - yum-utils, device-mapper-persistent-data, and lvm2
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - yum-utils
+    - device-mapper-persistent-data
+    - lvm2
+
+- name: RedHat | Add docker-ce repo to yum
+  command: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+    creates: /etc/yum.repos.d/docker-ce.repo
+
+- name: RedHat | Install docker-ce
+  yum:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+
+- name: RedHat | Give users privileges to access docker
+  user:
+    name: root
+    group: docker
+    comment: Grant Docker access to user - root
+    append: yes
+
+- name: RedHat | Start docker service
+  systemd:
+    name: docker
+    state: started
+
+- name: RedHat | Set SELinux to permissive mode
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: RedHat | Add kubernetes packages to yum
+  copy:
+    src: "{{ role_path }}/files/kubernetes.repos"
+    dest: /etc/yum.repos.d/kubernetes.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: RedHat | Install or update - kubelet, kubeadm, and kubectl
+  yum:
+    name: "{{ item }}"
+    state: latest
+    disable_excludes: kubernetes
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: RedHat | Start kubelet service
+  systemd:
+    name: kubelet
+    state: started
+
+- name: RedHat | Update kernel IPv4 network settings
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: RedHat | Update kernel IPv6 network settings
+  sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
