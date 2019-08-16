@@ -10,3 +10,6 @@ galaxy_info:
   - name: CentOS
     versions:
       - all
+  - name: Ubuntu
+    versions:
+      - all

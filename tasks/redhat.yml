@@ -42,7 +42,7 @@
 
 - name: RedHat | Add kubernetes packages to yum
   copy:
-    src: "{{ role_path }}/files/kubernetes.repos"
+    src: "{{ role_path }}/files/redhat/kubernetes.repos"
     dest: /etc/yum.repos.d/kubernetes.repo
     owner: root
     group: root

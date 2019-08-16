@@ -1,0 +1,109 @@
+---
+
+- name: Ubuntu | Install or update - apt-transport-https, ca-certificates, curl, gnupg-agent, and software-properties-common
+  apt:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - gnupg-agent
+    - software-properties-common
+
+- name: Ubuntu | Add apt-key for docker-ce
+  apt_key:
+    keyserver: https://download.docker.com/linux/ubuntu/gpg
+    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    state: present
+
+- name: Ubuntu | Add docker-ce repo to apt
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu "{{ ansible_distribution_release|string }}" stable
+    state: present
+
+- name: Ubuntu | Install docker-ce
+  apt:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+
+- name: Ubuntu | Give users privileges to access docker
+  user:
+    name: root
+    group: docker
+    comment: Grant Docker access to user - root
+    append: yes
+
+- name: Ubuntu | Start docker service
+  systemd:
+    name: docker
+    state: started
+
+- name: Ubuntu | Add apt-key url
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: Ubuntu | Add kubernetes packages to apt
+  copy:
+    src: "{{ role_path }}/files/ubuntu/kubernetes.list"
+    dest: /etc/apt/sources.list.d/kubernetes.list
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Ubuntu | Update apt
+  apt:
+    update_cache: yes
+
+- name: Ubuntu | Install or update - kubelet, kubeadm, and kubectl
+  apt:
+    name: "{{ item }}"
+    state: latest
+    allow_unauthenticated: yes
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+
+- name: Ubuntu | Check held packages in apt
+  command: apt-mark showhold
+  register: held_packages
+  changed_when: false
+
+- name: Ubuntu | Hold kubelet
+  command: apt-mark hold kubelet
+  when: '"kubelet" not in held_packages.stdout'
+
+- name: Ubuntu | Hold kubeadm
+  command: apt-mark hold kubeadm
+  when: '"kubeadm" not in held_packages.stdout'
+
+- name: Ubuntu | Hold kubectl
+  command: apt-mark hold kubectl
+  when: '"kubectl" not in held_packages.stdout'
+
+- name: Ubuntu | Start kubelet service
+  systemd:
+    name: kubelet
+    state: started
+
+- name: Ubuntu | Update kernel IPv4 network settings
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Ubuntu | Update kernel IPv6 network settings
+  sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: '1'
+    sysctl_set: yes
+    state: present
+    reload: yes
